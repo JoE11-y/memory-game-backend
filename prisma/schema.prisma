@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  username  String   @unique
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  players Player[]
+
+  stat Stat?
+
+  @@index([username])
+  @@index([createdAt, updatedAt])
+}
+
+model Stat {
+  id          String @id @default(uuid()) @db.Uuid
+  timesPlayed Float  @default(0)
+  xp          Float? @default(0)
+
+  total_wins   Int   @default(0)
+  total_losses Int   @default(0)
+  total_points Float @default(0.00)
+
+  scores Scores?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique @db.Uuid
+
+  @@index([xp])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([total_wins])
+  @@index([total_points])
+  @@index([total_losses])
+}
+
+model Scores {
+  id    String @id @default(uuid()) @db.Uuid
+  score Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stat   Stat   @relation(fields: [statId], references: [id], onDelete: Cascade)
+  statId String @unique @db.Uuid
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Game {
+  id         String   @id @default(uuid()) @db.Uuid
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  maxPlayers Int
+  isDisabled Boolean  @default(false)
+
+  players Player[]
+
+  currRound String?  @db.Uuid
+  rounds    Round[]
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Player {
+  id             String    @id @default(uuid()) @db.Uuid
+  score          Int
+  result         String?
+  disconnectedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  flips Flip[]
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  gameId String @db.Uuid
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([userId])
+}
+
+model Round {
+  id             String @id @default(uuid()) @db.Uuid
+  maxPlayerFlips Int    @default(2)
+
+  flips Flip[]
+  ended Boolean @default(false)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  gameId String @db.Uuid
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Flip {
+  id      String @id @default(uuid()) @db.Uuid
+  cardsId Int[]
+
+  playerId String @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  roundId String @db.Uuid
+  round   Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, roundId])
+}
