@@ -13,7 +13,12 @@ import { PrismaService } from 'prisma/prisma.service';
 import { StatusCodes } from 'enums/StatusCodes';
 import { JwtService } from '@nestjs/jwt';
 import { env } from 'configs/env.config';
-import { FlipCardDTO, GameIdDTO, StartGameDTO } from './dto/index.dto';
+import {
+  FlipCardDTO,
+  GameIdDTO,
+  SendMessageDTO,
+  StartGameDTO,
+} from './dto/index.dto';
 
 @WebSocketGateway({
   transports: ['polling', 'websocket'],
@@ -169,6 +174,36 @@ export class RealtimeGateway
       client.emit('card-flipped', {
         gameId,
         player: user.sub,
+      });
+    } catch (error) {
+      client.emit('error', {
+        status: StatusCodes.BadRequest,
+        message: error.message,
+      });
+    }
+  }
+
+  @SubscribeMessage('send-message')
+  async handleSendMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() { gameId, message }: SendMessageDTO,
+  ) {
+    const user = this.clients.get(client);
+
+    if (!user) {
+      client.emit('error', {
+        status: StatusCodes.Unauthorized,
+        message: 'User not authenticated',
+      });
+      return;
+    }
+
+    try {
+      await this.realtimeService.sendMessage(gameId, user.sub, message);
+      client.emit('message-sent', {
+        gameId,
+        player: user.sub,
+        message: message,
       });
     } catch (error) {
       client.emit('error', {

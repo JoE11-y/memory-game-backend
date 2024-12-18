@@ -59,7 +59,7 @@ export class RealtimeService {
         status: 'awaiting-players',
         maxPlayers: maxPlayers,
       },
-      include: { players: true },
+      include: { players: true, message: true, rounds: true },
     });
 
     this.cards.set(game.id, shuffleCards);
@@ -379,5 +379,35 @@ export class RealtimeService {
         ...updatedData,
       },
     });
+  }
+
+  async sendMessage(gameId: string, userId: string, message: string) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { players: true, rounds: true },
+    });
+    const player = game.players.find((p) => p.userId === userId);
+    if (!player) throw new Error('Player not found in game');
+
+    await this.prisma.message.create({
+      data: {
+        player: { connect: { id: player.id } },
+        game: { connect: { id: gameId } },
+        text: message,
+      },
+    });
+
+    this.server.to(gameId).emit('in-game-message', {
+      message: message,
+    });
+  }
+
+  async getGameMessages(gameId: string) {
+    const messages = await this.prisma.message.findMany({
+      where: { gameId: gameId },
+      include: { player: true },
+    });
+
+    return messages;
   }
 }

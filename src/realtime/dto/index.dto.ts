@@ -22,3 +22,13 @@ export class FlipCardDTO {
   @IsNotEmpty()
   cardId: number;
 }
+
+export class SendMessageDTO {
+  @IsString()
+  @IsNotEmpty()
+  gameId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  message: string;
+}
